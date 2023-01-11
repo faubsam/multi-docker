@@ -1,0 +1,38 @@
+name: Deploy Multidocker
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Authenticate to Docker
+      run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+    - name: Build docker test image file
+      run: docker build -t faubsam20/react-test -f ./client/Dockerfile.dev ./client
+    - name: Run docker test image
+      run: docker run -e CI=true faubsam20/react-test npm test
+      
+    - name: Build production client
+      run: docker build -t faubsam20/multi-client ./client
+    - name: Build production nginx
+      run: docker build -t faubsam20/multi-nginx ./nginx
+    - name: Build production server
+      run: docker build -t faubsam20/multi-server ./server
+    - name: Build production worker
+      run: docker build -t faubsam20/multi-worker ./worker
+      
+    - name: Push client image to Docker Hub
+      run: docker push faubsam20/multi-client
+    - name: Push nginx image to Docker Hub
+      run: docker push faubsam20/multi-nginx
+    - name: Push server image to Docker Hub
+      run: docker push faubsam20/multi-server
+    - name: Push worker image to Docker Hub
+      run: docker push faubsam20/multi-worker
+      
+    - name: Generate deployment package
+      run: zip -r deploy.zip . -x '*.git'
